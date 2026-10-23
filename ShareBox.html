@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShareBox - File Sharing</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, sans-serif; background: #f3f5fa; color: #222; }
+header { background: #243b80; color: white; padding: 20px; text-align: center; }
+header h1 { margin: 0; font-size: 27px; }
+header p { margin-bottom: 0; }
+.container { max-width: 950px; margin: auto; padding: 18px; }
+.upload-box { background: white; padding: 25px; border-radius: 15px; text-align: center; box-shadow: 0 3px 12px #0001; }
+.upload-box h2 { margin-top: 0; }
+input, select, button { padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin: 5px; max-width: 100%; }
+button { background: #3156c9; color: white; border: none; cursor: pointer; }
+button:hover { background: #203e9b; }
+.search { width: 100%; margin: 20px 0; padding: 14px; background: white; }
+.files { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+.file { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px #0001; overflow-wrap: anywhere; }
+.icon { font-size: 38px; }
+.file h3 { font-size: 16px; }
+.file button { margin: 4px 2px; }
+.empty { text-align: center; padding: 30px; color: #777; }
+footer { text-align: center; padding: 25px; color: #777; }
+</style>
+</head>
+<body>
+<header>
+    <h1>📂 ShareBox</h1>
+    <p>Upload, explore and share your files</p>
+</header>
+<div class="container">
+    <section class="upload-box">
+        <h2>Upload Your Files</h2>
+        <p>Share videos, photos, documents, PDFs and ebooks.</p>
+        <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt,.epub,.mobi,.ppt,.pptx,.xls,.xlsx,.zip">
+        <br>
+        <button onclick="uploadFiles()">📤 Add Files</button>
+        <p id="message"></p>
+    </section>
+    <input class="search" type="search" id="search" placeholder="🔍 Search your files..." oninput="showFiles()">
+    <h2>📁 My Files</h2>
+    <div class="files" id="fileList"></div>
+</div>
+<footer>ShareBox © 2026<br>Your files, your space.</footer>
+<script>
+let files = [];
+function uploadFiles() {
+    const input = document.getElementById("fileInput");
+    const message = document.getElementById("message");
+    if (!input.files.length) { message.textContent = "Please select some files first."; return; }
+    for (const file of input.files) {
+        files.push({name:file.name, size:file.size, type:file.type, file:file, id:crypto.randomUUID()});
+    }
+    message.textContent = input.files.length + " file(s) added successfully!";
+    input.value = "";
+    showFiles();
+}
+function getIcon(file) {
+    if (file.type.startsWith("image/")) return "🖼️";
+    if (file.type.startsWith("video/")) return "🎬";
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return "📕";
+    if (/\.(epub|mobi)$/i.test(file.name)) return "📚";
+    if (file.type.includes("word") || /\.(doc|docx|txt)$/i.test(file.name)) return "📝";
+    return "📄";
+}
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1048576).toFixed(2) + " MB";
+}
+function showFiles() {
+    const list = document.getElementById("fileList");
+    const query = document.getElementById("search").value.toLowerCase();
+    list.innerHTML = "";
+    const filtered = files.filter(file => file.name.toLowerCase().includes(query));
+    if (!filtered.length) { list.innerHTML = '<div class="empty">No files found.</div>'; return; }
+    filtered.forEach(file => {
+        const card = document.createElement("div"); card.className = "file";
+        const icon = document.createElement("div"); icon.className = "icon"; icon.textContent = getIcon(file);
+        const title = document.createElement("h3"); title.textContent = file.name;
+        const size = document.createElement("p"); size.textContent = formatSize(file.size);
+        const download = document.createElement("button"); download.textContent = "⬇ Download";
+        download.onclick = () => {
+            const url = URL.createObjectURL(file.file); const a = document.createElement("a");
+            a.href = url; a.download = file.name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        };
+        const share = document.createElement("button"); share.textContent = "🔗 Share";
+        share.onclick = async () => {
+            if (navigator.share && navigator.canShare && navigator.canShare({files:[file.file]})) {
+                try { await navigator.share({title:file.name, files:[file.file]}); }
+                catch (error) { if (error.name !== "AbortError") alert("Unable to share this file."); }
+            } else {
+                alert("This demo cannot create a public file link. Online storage is required.");
+            }
+        };
+        const remove = document.createElement("button"); remove.textContent = "🗑 Remove";
+        remove.onclick = () => { files = files.filter(item => item.id !== file.id); showFiles(); };
+        card.append(icon, title, size, download, share, remove); list.appendChild(card);
+    });
+}
+showFiles();
+</script>
+</body>
+</html>
